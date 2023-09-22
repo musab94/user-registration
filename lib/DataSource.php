@@ -1,0 +1,104 @@
+<?php
+
+namespace Form;
+
+class DataSource
+{
+    const HOST = 'localhost';
+
+    const USERNAME = 'root';
+
+    const PASSWORD = 'Root@123';
+
+    const DATABASENAME = 'user-registration';
+
+    private $conn;
+
+    function __construct()
+    {
+        $this->conn = $this->getConnection();
+    }
+
+    /**
+     * Methods for insert / update / etc.
+     *
+     * @return \mysqli
+     */
+    public function getConnection()
+    {
+        $conn = new \mysqli(self::HOST, self::USERNAME, self::PASSWORD, self::DATABASENAME);
+
+        if (mysqli_connect_errno()) {
+            exit('Failed to connect to MySQL: ' . mysqli_connect_error());
+        }
+
+        return $conn;
+    }
+
+    /**
+     * To get results
+     *
+     * @param string $query
+     * @param string $paramType
+     * @param array $paramArray
+     * @return array
+     */
+    public function select($query, $paramType = "", $paramArray = array())
+    {
+        $stmt = $this->conn->prepare($query);
+        
+        if (! empty($paramType) && ! empty($paramArray)) {
+
+            $this->bindQueryParams($stmt, $paramType, $paramArray);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $resultset[] = $row;
+            }
+        }
+
+        if (! empty($resultset)) {
+            return $resultset;
+        }
+    }
+
+    /**
+     * To insert
+     *
+     * @param string $query
+     * @param string $paramType
+     * @param array $paramArray
+     * @return int
+     */
+    public function insert($query, $paramType, $paramArray)
+    {
+        $stmt = $this->conn->prepare($query);
+        $this->bindQueryParams($stmt, $paramType, $paramArray);
+
+        $stmt->execute();
+        $insertId = $stmt->insert_id;
+        return $insertId;
+    }
+
+    /**
+     * Bind prameters to the sql statement
+     *
+     * @param string $stmt
+     * @param string $paramType
+     * @param array $paramArray
+     */
+    public function bindQueryParams($stmt, $paramType, $paramArray = array())
+    {
+        $paramValueReference[] = & $paramType;
+        for ($i = 0; $i < count($paramArray); $i ++) {
+            $paramValueReference[] = & $paramArray[$i];
+        }
+        call_user_func_array(array(
+            $stmt,
+            'bind_param'
+        ), $paramValueReference);
+    }
+}
